@@ -159,9 +159,11 @@
      * Initialization function. Detects if the browser supports DOM Storage
      * or userData behavior and behaves accordingly.
      */
-    function _init(){
+    function _init(options){
         /* Check if browser supports localStorage */
         var localStorageReallyWorks = false;
+        var sessionStorageReallyWorks = false;
+
         if("localStorage" in window){
             try {
                 window.localStorage.setItem("_tmptest", "tmpval");
@@ -173,7 +175,26 @@
             }
         }
 
-        if(localStorageReallyWorks){
+        if("sessionStorage" in window){
+            try {
+                window.sessionStorage.setItem("_tmptest", "tmpval");
+                sessionStorageReallyWorks = true;
+                window.sessionStorage.removeItem("_tmptest");
+            } catch(BogusQuotaExceededErrorOnIos5) {
+                // Thanks be to iOS5 Private Browsing mode which throws
+                // QUOTA_EXCEEDED_ERRROR DOM Exception 22.
+            }
+        }
+
+        if(options.useSessionStorage && sessionStorageReallyWorks) {
+             try {
+                if(window.localStorage) {
+                    _storage_service = window.sessionStorage;
+                    _backend = "localStorage";
+                    _observer_update = _storage_service.jStorage_update;
+                }
+            } catch(E3) {/* Firefox fails when touching localStorage and cookies are disabled */}
+        } else if(localStorageReallyWorks){
             try {
                 if(window.localStorage) {
                     _storage_service = window.localStorage;
@@ -952,9 +973,12 @@
 
             return this;
          }
+
     };
 
     // Initialize jStorage
-    _init();
+     _init({
+                useSessionStorage : true
+            })
 
 })();
